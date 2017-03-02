@@ -17,7 +17,7 @@ import Data.Array.Unboxed (UArray)
 import Data.Data.Lens
 import Data.Fixed (Fixed, E1)
 import Data.List
-import Data.SafeCopy
+import Data.SafeCopy.Store
 import Data.Store (decodeWith)
 import Data.Time (ZonedTime(..))
 import Data.Tree (Tree)
@@ -62,6 +62,16 @@ deriving instance Eq ZonedTime
 deriving instance Show UniversalTime
 #endif
 
+data Example = Example {
+    exampleField1 :: String
+  , exampleField2 :: Bool
+  } deriving (Show, Eq)
+
+deriveSafeCopy 1 'base ''Example
+
+instance Arbitrary Example where
+  arbitrary = Example <$> arbitrary <*> arbitrary
+
 -- | Equality on the 'Right' value, showing the unequal value on failure;
 -- or explicit failure using the 'Left' message without equality testing.
 (===) :: (Eq a, Show a) => Either PeekException a -> a -> Property
@@ -89,6 +99,7 @@ do let a = conT ''Int
    -- instead we include these hand-defaulted types
    included <- sequence
       [ [t| Fixed E1 |]
+      , [t| Example |]
       ]
 
    -- types whose samples grow exponentially and need a lower maxSize

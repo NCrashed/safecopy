@@ -19,10 +19,10 @@
 -- can change the defintion and binary format of a type nested deep within
 -- other types without problems.
 --
-module Data.SafeCopy.SafeCopy where
+module Data.SafeCopy.Store.SafeCopy where
 
 import Data.Store
-import Data.SafeCopy.Encode
+import Data.SafeCopy.Store.Encode
 
 import Control.Monad
 import Data.Int (Int32)

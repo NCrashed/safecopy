@@ -5,10 +5,11 @@
 #define MIN_VERSION_template_haskell(x,y,z) 1
 #endif
 
-module Data.SafeCopy.Derive where
+module Data.SafeCopy.Store.Derive where
 
 import Data.Store
-import Data.SafeCopy.SafeCopy
+import Data.SafeCopy.Store.Encode
+import Data.SafeCopy.Store.SafeCopy
 
 #if MIN_VERSION_template_haskell(2,8,0)
 import Language.Haskell.TH hiding (Kind)
@@ -45,11 +46,11 @@ import Data.Word (Word8) -- Haddock
 --   @
 --instance (SafeCopy a, SafeCopy b) =>
 --         SafeCopy (T0 b) where
---    putCopy (T0 arg1 arg2) = contain $ do put_b   <- getSafePut
---                                          put_Int <- getSafePut
---                                          put_b   arg1
---                                          put_Int arg2
---                                          return ()
+--    putCopy a@(T0 arg1 arg2) = contain $ do put_b   <- getSafePut
+--                                            put_Int <- getSafePut
+--                                            put_b   arg1
+--                                            put_Int arg2
+--                                            return a
 --    getCopy = contain $ do get_b   <- getSafeGet
 --                           get_Int <- getSafeGet
 --                           return T0 \<*\> get_b \<*\> get_Int
@@ -73,17 +74,17 @@ import Data.Word (Word8) -- Haddock
 --   @
 --instance (SafeCopy a, SafeCopy b) =>
 --         SafeCopy (T a b) where
---    putCopy (C arg1 arg2) = contain $ do putWord8 0
---                                         put_a <- getSafePut
---                                         put_a arg1
---                                         put_a arg2
---                                         return ()
---    putCopy (D arg1 arg2) = contain $ do putWord8 1
---                                         put_b   <- getSafePut
---                                         put_Int <- getSafePut
---                                         put_b   arg1
---                                         put_Int arg2
---                                         return ()
+--    putCopy a@(C arg1 arg2) = contain $ do putWord8 0
+--                                           put_a <- getSafePut
+--                                           put_a arg1
+--                                           put_a arg2
+--                                           return a
+--    putCopy a@(D arg1 arg2) = contain $ do putWord8 1
+--                                           put_b   <- getSafePut
+--                                           put_Int <- getSafePut
+--                                           put_b   arg1
+--                                           put_Int arg2
+--                                           return a
 --    getCopy = contain $ do tag <- getWord8
 --                           case tag of
 --                             0 -> do get_a <- getSafeGet
@@ -136,14 +137,14 @@ deriveSafeCopyIndexedType = internalDeriveSafeCopyIndexedType Normal
 --   @
 --instance (SafeCopy a, SafeCopy b) =>
 --         SafeCopy (T a b) where
---    putCopy (C arg1 arg2) = contain $ do putWord8 0
---                                         safePut arg1
---                                         safePut arg2
---                                         return ()
---    putCopy (D arg1 arg2) = contain $ do putWord8 1
---                                         safePut arg1
---                                         safePut arg2
---                                         return ()
+--    putCopy a@(C arg1 arg2) = contain $ do putWord8 0
+--                                           safePut arg1
+--                                           safePut arg2
+--                                           return a
+--    putCopy a@(D arg1 arg2) = contain $ do putWord8 1
+--                                           safePut arg1
+--                                           safePut arg2
+--                                           return a
 --    getCopy = contain $ do tag <- getWord8
 --                           case tag of
 --                             0 -> do return C \<*\> safeGet \<*\> safeGet
@@ -190,10 +191,10 @@ deriveSafeCopySimpleIndexedType = internalDeriveSafeCopyIndexedType Simple
 --   @
 --instance (SafeCopy a, SafeCopy b) =>
 --         SafeCopy (T0 b) where
---    putCopy (T0 arg1 arg2) = contain $ do putWord8 0
---                                          safePut arg1
---                                          safePut arg2
---                                          return ()
+--    putCopy a@(T0 arg1 arg2) = contain $ do putWord8 0
+--                                            safePut arg1
+--                                            safePut arg2
+--                                            return a
 --    getCopy = contain $ do tag <- getWord8
 --                           case tag of
 --                             0 -> do return T0 \<*\> safeGet \<*\> safeGet
@@ -354,12 +355,13 @@ mkPutCopy deriveType cons = funD 'putCopy $ map mkPutClause cons
                (putFunsDecs, putFuns) <- case deriveType of
                                            Normal -> mkSafeFunctions "safePut_" 'getSafePut con
                                            _      -> return ([], const 'safePut)
-               let putClause   = conP (conName con) (map varP putVars)
+               asName <- newName "a"
+               let putClause   = asP asName $ conP (conName con) (map varP putVars)
                    putCopyBody = varE 'contain `appE` doE (
-                                   [ noBindS $ varE 'poke `appE` litE (IntegerL conNumber) | manyConstructors ] ++
+                                   [ bindS wildP $ varE 'pokeE `appE` litE (IntegerL conNumber) | manyConstructors ] ++
                                    putFunsDecs ++
-                                   [ noBindS $ varE (putFuns typ) `appE` varE var | (typ, var) <- zip (conTypes con) putVars ] ++
-                                   [ noBindS $ varE 'return `appE` tupE [] ])
+                                   [ bindS wildP $ varE (putFuns typ) `appE` varE var | (typ, var) <- zip (conTypes con) putVars ] ++
+                                   [ noBindS $ varE 'return `appE` varE asName ])
                clause [putClause] (normalB putCopyBody) []
 
 mkGetCopy :: DeriveType -> String -> [(Integer, Con)] -> DecQ

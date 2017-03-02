@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, UndecidableInstances, TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Data.SafeCopy.Instances where
+module Data.SafeCopy.Store.Instances where
 
-import Data.SafeCopy.SafeCopy
-import Data.SafeCopy.Encode
+import Data.SafeCopy.Store.SafeCopy
+import Data.SafeCopy.Store.Encode
 
 #if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative

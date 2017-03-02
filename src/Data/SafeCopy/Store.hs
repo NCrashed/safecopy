@@ -74,7 +74,7 @@
 -- With this, you reflect on your code and you are happy. You feel confident in the safety of
 -- your data and you know you can remove @Contacts_v0@ once you no longer wish to support
 -- that legacy format.
-module Data.SafeCopy
+module Data.SafeCopy.Store
     (
       safeGet
     , safePut
@@ -109,8 +109,8 @@ module Data.SafeCopy
     , primitive
     ) where
 
-import Data.SafeCopy.Derive
-import Data.SafeCopy.Encode
-import Data.SafeCopy.Instances ()
-import Data.SafeCopy.SafeCopy
+import Data.SafeCopy.Store.Derive
+import Data.SafeCopy.Store.Encode
+import Data.SafeCopy.Store.Instances ()
+import Data.SafeCopy.Store.SafeCopy
 import Data.Store

@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Data.SafeCopy.Encode where
+module Data.SafeCopy.Store.Encode where
 
 import Data.ByteString (ByteString)
 import Data.Monoid
