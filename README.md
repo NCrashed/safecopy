@@ -1,7 +1,7 @@
 SafeCopy-store
 ==============
 
-[![Build Status](https://travis-ci.org/acid-state/safecopy.svg?branch=master)](https://travis-ci.org/ncrashed/safecopy)
+[![Build Status](https://travis-ci.org/NCrashed/safecopy.svg?branch=master)](https://travis-ci.org/NCrashed/safecopy)
 [![Public Domain](http://b.repl.ca/v1/license-public-blue.png)](https://en.wikipedia.org/wiki/Public_domain_software)
 [![Haskell](http://b.repl.ca/v1/language-haskell-4e6272.png)](Http://www.haskell.org)
 [![Hackage Status](https://img.shields.io/hackage/v/safecopy-store.svg)][hackage]
