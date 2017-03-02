@@ -7,7 +7,7 @@
 
 module Data.SafeCopy.Derive where
 
-import Data.Serialize (getWord8, putWord8, label)
+import Data.Store
 import Data.SafeCopy.SafeCopy
 
 #if MIN_VERSION_template_haskell(2,8,0)
@@ -356,7 +356,7 @@ mkPutCopy deriveType cons = funD 'putCopy $ map mkPutClause cons
                                            _      -> return ([], const 'safePut)
                let putClause   = conP (conName con) (map varP putVars)
                    putCopyBody = varE 'contain `appE` doE (
-                                   [ noBindS $ varE 'putWord8 `appE` litE (IntegerL conNumber) | manyConstructors ] ++
+                                   [ noBindS $ varE 'poke `appE` litE (IntegerL conNumber) | manyConstructors ] ++
                                    putFunsDecs ++
                                    [ noBindS $ varE (putFuns typ) `appE` varE var | (typ, var) <- zip (conTypes con) putVars ] ++
                                    [ noBindS $ varE 'return `appE` tupE [] ])
@@ -365,14 +365,13 @@ mkPutCopy deriveType cons = funD 'putCopy $ map mkPutClause cons
 mkGetCopy :: DeriveType -> String -> [(Integer, Con)] -> DecQ
 mkGetCopy deriveType tyName cons = valD (varP 'getCopy) (normalB $ varE 'contain `appE` mkLabel) []
     where
-      mkLabel = varE 'label `appE` litE (stringL labelString) `appE` getCopyBody
-      labelString = tyName ++ ":"
+      mkLabel = getCopyBody
       getCopyBody
           = case cons of
               [(_, con)] | not (forceTag deriveType) -> mkGetBody con
               _ -> do
                 tagVar <- newName "tag"
-                doE [ bindS (varP tagVar) (varE 'getWord8)
+                doE [ bindS (varP tagVar) (varE 'poke)
                     , noBindS $ caseE (varE tagVar) (
                         [ match (litP $ IntegerL i) (normalB $ mkGetBody con) [] | (i, con) <- cons ] ++
                         [ match wildP (normalB $ varE 'fail `appE` errorMsg tagVar) [] ]) ]

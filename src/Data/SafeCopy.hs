@@ -79,6 +79,9 @@ module Data.SafeCopy
       safeGet
     , safePut
     , SafeCopy(version, kind, getCopy, putCopy, objectProfile, errorTypeName)
+    , Encode
+    , runEncode
+    , PeekException
     , Profile(..)
     , Prim(..)
     , Migrate(..)
@@ -106,6 +109,8 @@ module Data.SafeCopy
     , primitive
     ) where
 
+import Data.SafeCopy.Derive
+import Data.SafeCopy.Encode
 import Data.SafeCopy.Instances ()
 import Data.SafeCopy.SafeCopy
-import Data.SafeCopy.Derive
+import Data.Store

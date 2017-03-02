@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, TypeFamilies, FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE CPP #-}
 #ifdef DEFAULT_SIGNATURES
 {-# LANGUAGE DefaultSignatures #-}
@@ -21,7 +21,8 @@
 --
 module Data.SafeCopy.SafeCopy where
 
-import Data.Serialize
+import Data.Store
+import Data.SafeCopy.Encode
 
 import Control.Monad
 import Data.Int (Int32)
@@ -95,12 +96,12 @@ class SafeCopy a where
     -- | This method defines how a value should be parsed without also worrying
     --   about writing out the version tag. This function cannot be used directly.
     --   One should use 'safeGet', instead.
-    getCopy  :: Contained (Get a)
+    getCopy  :: Contained (Peek a)
 
     -- | This method defines how a value should be parsed without worrying about
     --   previous versions or migrations. This function cannot be used directly.
     --   One should use 'safeGet', instead.
-    putCopy  :: a -> Contained Put
+    putCopy  :: a -> Contained (Encode a)
 
     -- | Internal function that should not be overrided.
     --   @Consistent@ iff the version history is consistent
@@ -125,20 +126,20 @@ class SafeCopy a where
     errorTypeName _ = "<unkown type>"
 
 #ifdef DEFAULT_SIGNATURES
-    default getCopy :: Serialize a => Contained (Get a)
-    getCopy = contain get
+    default getCopy :: Store a => Contained (Peek a)
+    getCopy = contain peek
 
-    default putCopy :: Serialize a => a -> Contained Put
-    putCopy = contain . put
+    default putCopy :: Store a => a -> Contained (Encode a)
+    putCopy = contain . pokeE
 #endif
 
 
--- constructGetterFromVersion :: SafeCopy a => Version a -> Kind (MigrateFrom (Reverse a)) -> Get (Get a)
-constructGetterFromVersion :: SafeCopy a => Version a -> Kind a -> Either String (Get a)
+-- constructGetterFromVersion :: SafeCopy a => Version a -> Kind (MigrateFrom (Reverse a)) -> Get (Peek a)
+constructGetterFromVersion :: SafeCopy a => Version a -> Kind a -> Either String (Peek a)
 constructGetterFromVersion diskVersion orig_kind =
   worker False diskVersion orig_kind
   where
-    worker :: forall a. SafeCopy a => Bool -> Version a -> Kind a -> Either String (Get a)
+    worker :: forall a. SafeCopy a => Bool -> Version a -> Kind a -> Either String (Peek a)
     worker fwd thisVersion thisKind
       | version == thisVersion = return $ unsafeUnPack getCopy
       | otherwise =
@@ -152,9 +153,9 @@ constructGetterFromVersion diskVersion orig_kind =
           Extended a_kind -> do
             let rev_proxy :: Proxy (MigrateFrom (Reverse a))
                 rev_proxy = Proxy
-                forwardGetter :: Either String (Get a)
+                forwardGetter :: Either String (Peek a)
                 forwardGetter  = fmap (fmap (unReverse . migrate)) $ worker True (castVersion thisVersion) (kindFromProxy rev_proxy)
-                previousGetter :: Either String (Get a)
+                previousGetter :: Either String (Peek a)
                 previousGetter = worker fwd (castVersion thisVersion) a_kind
             case forwardGetter of
               Left{}    -> previousGetter
@@ -175,19 +176,19 @@ constructGetterFromVersion diskVersion orig_kind =
 
 -- | Parse a version tagged data type and then migrate it to the desired type.
 --   Any serialized value has been extended by the return type can be parsed.
-safeGet :: SafeCopy a => Get a
+safeGet :: SafeCopy a => Peek a
 safeGet
     = join getSafeGet
 
 -- | Parse a version tag and return the corresponding migrated parser. This is
 --   useful when you can prove that multiple values have the same version.
 --   See 'getSafePut'.
-getSafeGet :: forall a. SafeCopy a => Get (Get a)
+getSafeGet :: forall a. SafeCopy a => Peek (Peek a)
 getSafeGet
     = checkConsistency proxy $
       case kindFromProxy proxy of
         Primitive -> return $ unsafeUnPack getCopy
-        a_kind    -> do v <- get
+        a_kind    -> do v <- peek
                         case constructGetterFromVersion v a_kind of
                           Right getter -> return getter
                           Left msg     -> fail msg
@@ -196,19 +197,19 @@ getSafeGet
 -- | Serialize a data type by first writing out its version tag. This is much
 --   simpler than the corresponding 'safeGet' since previous versions don't
 --   come into play.
-safePut :: SafeCopy a => a -> Put
+safePut :: SafeCopy a => a -> Encode a
 safePut a
     = do putter <- getSafePut
          putter a
 
 -- | Serialize the version tag and return the associated putter. This is useful
 --   when serializing multiple values with the same version. See 'getSafeGet'.
-getSafePut :: forall a. SafeCopy a => PutM (a -> Put)
+getSafePut :: forall a. SafeCopy a => Encode (a -> Encode a)
 getSafePut
     = checkConsistency proxy $
       case kindFromProxy proxy of
         Primitive -> return $ \a -> unsafeUnPack (putCopy $ asProxyType a proxy)
-        _         -> do put (versionFromProxy proxy)
+        _         -> do _ <- pokeE (versionFromProxy proxy)
                         return $ \a -> unsafeUnPack (putCopy $ asProxyType a proxy)
     where proxy = Proxy :: Proxy a
 
@@ -245,7 +246,7 @@ primitive = Primitive
 -- parser function.
 
 -- | A simple numeric version id.
-newtype Version a = Version {unVersion :: Int32} deriving (Read,Show,Eq)
+newtype Version a = Version {unVersion :: Int32} deriving (Read,Show,Eq,Store)
 
 castVersion :: Version a -> Version b
 castVersion (Version a) = Version a
@@ -258,10 +259,6 @@ instance Num (Version a) where
     abs (Version a) = Version (abs a)
     signum (Version a) = Version (signum a)
     fromInteger i = Version (fromInteger i)
-
-instance Serialize (Version a) where
-    get = liftM Version get
-    put = put . unVersion
 
 -------------------------------------------------
 -- Container type to control the access to the

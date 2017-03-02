@@ -10,7 +10,6 @@
 #define MIN_VERSION_template_haskell(x,y,z) 1
 #endif
 
-import Control.Applicative
 import Control.Lens
 import Control.Lens.Action
 import Data.Array (Array)
@@ -19,18 +18,14 @@ import Data.Data.Lens
 import Data.Fixed (Fixed, E1)
 import Data.List
 import Data.SafeCopy
-import Data.Serialize (runPut, runGet)
-import Data.Time (UniversalTime(..), ZonedTime(..))
+import Data.Store (decodeWith)
+import Data.Time (ZonedTime(..))
 import Data.Tree (Tree)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Test.QuickCheck.Instances ()
 import Test.Tasty
 import Test.Tasty.QuickCheck hiding (Fixed, (===))
-import qualified Data.Vector as V
-import qualified Data.Vector.Primitive as VP
-import qualified Data.Vector.Storable as VS
-import qualified Data.Vector.Unboxed as VU
 
 #if ! MIN_VERSION_QuickCheck(2,9,0)
 instance (Arbitrary a, Arbitrary b, Arbitrary c, Arbitrary d, Arbitrary e, Arbitrary f) =>
@@ -69,17 +64,17 @@ deriving instance Show UniversalTime
 
 -- | Equality on the 'Right' value, showing the unequal value on failure;
 -- or explicit failure using the 'Left' message without equality testing.
-(===) :: (Eq a, Show a) => Either String a -> a -> Property
-Left  e === _ = printTestCase e False
-Right a === b = printTestCase (show a) $ a == b
+(===) :: (Eq a, Show a) => Either PeekException a -> a -> Property
+Left  e === _ = counterexample (show e) False
+Right a === b = counterexample (show a) $ a == b
 
 -- | An instance for 'SafeCopy' makes a type isomorphic to a bytestring
 -- serialization, which is to say that @decode . encode = id@, i.e.
 -- @decode@ is the inverse of @encode@ if we ignore bottom.
 prop_inverse :: (SafeCopy a, Arbitrary a, Eq a, Show a) => a -> Property
 prop_inverse a = (decode . encode) a === a where
-    encode = runPut . safePut
-    decode = runGet safeGet
+    encode = runEncode . safePut
+    decode = decodeWith safeGet
 
 -- | Test the 'prop_inverse' property against all 'SafeCopy' instances
 -- (that also satisfy the rest of the constraints) defaulting any type
