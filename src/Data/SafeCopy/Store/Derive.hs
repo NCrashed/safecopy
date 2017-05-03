@@ -358,7 +358,7 @@ mkPutCopy deriveType cons = funD 'putCopy $ map mkPutClause cons
                asName <- newName "a"
                let putClause   = asP asName $ conP (conName con) (map varP putVars)
                    putCopyBody = varE 'contain `appE` doE (
-                                   [ bindS wildP $ varE 'pokeE `appE` litE (IntegerL conNumber) | manyConstructors ] ++
+                                   [ bindS wildP $ varE 'pokeE `appE` sigE (litE (IntegerL conNumber)) (conT ''Integer) | manyConstructors ] ++
                                    putFunsDecs ++
                                    [ bindS wildP $ varE (putFuns typ) `appE` varE var | (typ, var) <- zip (conTypes con) putVars ] ++
                                    [ noBindS $ varE 'return `appE` varE asName ])
@@ -373,8 +373,8 @@ mkGetCopy deriveType tyName cons = valD (varP 'getCopy) (normalB $ varE 'contain
               [(_, con)] | not (forceTag deriveType) -> mkGetBody con
               _ -> do
                 tagVar <- newName "tag"
-                doE [ bindS (varP tagVar) (varE 'poke)
-                    , noBindS $ caseE (varE tagVar) (
+                doE [ bindS (varP tagVar) (varE 'peek)
+                    , noBindS $ caseE (sigE (varE tagVar) (conT ''Integer)) (
                         [ match (litP $ IntegerL i) (normalB $ mkGetBody con) [] | (i, con) <- cons ] ++
                         [ match wildP (normalB $ varE 'fail `appE` errorMsg tagVar) [] ]) ]
       mkGetBody con

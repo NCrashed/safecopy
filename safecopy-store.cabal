@@ -3,7 +3,7 @@
 -- http://www.haskell.org/cabal/release/cabal-latest/doc/users-guide/authors.html#pkg-descr.
 -- The name of the package.
 Name:                safecopy-store
-Version:             0.9.3
+Version:             0.9.4
 Synopsis:            Binary serialization with version control.
 Description:         Fork of safecopy that uses store instead of cereal.
 Homepage:            https://github.com/NCrashed/safecopy
@@ -59,6 +59,7 @@ Library
 Test-suite instances
   Type:                exitcode-stdio-1.0
   Main-is:             instances.hs
+  Other-modules:       Deriving
   Hs-Source-Dirs:      test/
   GHC-Options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   Build-depends:       base, store, template-haskell, safecopy-store,
