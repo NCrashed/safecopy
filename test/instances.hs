@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -18,7 +19,7 @@ import Data.Data.Lens
 import Data.Fixed (Fixed, E1)
 import Data.List
 import Data.SafeCopy.Store
-import Data.Store (decodeWith)
+import Data.Store (decodeWith, decodeExWith)
 import Data.Time (ZonedTime(..))
 import Data.Tree (Tree)
 import Language.Haskell.TH
@@ -26,6 +27,7 @@ import Language.Haskell.TH.Syntax
 import Test.QuickCheck.Instances ()
 import Test.Tasty
 import Test.Tasty.QuickCheck hiding (Fixed, (===))
+import Test.Tasty.HUnit
 
 #if ! MIN_VERSION_QuickCheck(2,9,0)
 instance (Arbitrary a, Arbitrary b, Arbitrary c, Arbitrary d, Arbitrary e, Arbitrary f) =>
@@ -164,7 +166,45 @@ do let a = conT ''Int
    [d| inversions :: [TestTree]
        inversions = $(props included) ++ $(props exclusive) |]
 
+data AV0 = AV0 Int deriving (Eq, Show)
+deriveSafeCopy 1 'base ''AV0
+
+data AV1 = AV1 Int Int deriving (Eq, Show)
+deriveSafeCopy 2 'extension ''AV1
+
+instance Migrate AV1 where
+  type MigrateFrom AV1 = AV0
+  migrate (AV0 n) = AV1 n 0
+
+data BV0 = BV0 {
+  bfield1 :: Int
+} deriving (Eq, Show)
+deriveSafeCopy 1 'base ''BV0
+
+data BV1 = BV1 {
+  bfield2 :: Int
+, bfield3 :: Int
+} deriving (Eq, Show)
+deriveSafeCopy 2 'extension ''BV1
+
+instance Migrate BV1 where
+  type MigrateFrom BV1 = BV0
+  migrate (BV0 n) = BV1 n 0
+
+migrationTest :: [TestTree]
+migrationTest = [
+    testCase "Extension test" $ let
+      bs = runEncode $ safePut $ AV0 42
+      v2 = decodeExWith safeGet bs
+      in v2 @?= AV1 42 0
+  , testCase "Extension+rename test" $ let
+      bs = runEncode $ safePut $ BV0 42
+      v2 = decodeExWith safeGet bs
+      in v2 @?= BV1 42 0
+  ]
+
 main :: IO ()
 main = defaultMain $ testGroup "SafeCopy instances"
     [ testGroup "decode is the inverse of encode" inversions
+    , testGroup "can decode with migration" migrationTest
     ]
