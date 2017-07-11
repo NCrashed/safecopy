@@ -1,3 +1,14 @@
+0.9.4
+=====
+
+ - compatible with lts-8.13
+ - fix TH deriving for sums
+ 
+0.9.3
+=====
+
+ - compatible with lts-8.11
+
 0.9.1
 =====
 
@@ -19,5 +30,3 @@ This change originated as a modification to the way `cereal` 0.5 serializes `Flo
 [https://github.com/GaloisInc/cereal/commit/47d839609413e3e9d1147b99c34ae421ae36bced](https://github.com/GaloisInc/cereal/commit/47d839609413e3e9d1147b99c34ae421ae36bced)
 
 [https://github.com/GaloisInc/cereal/issues/35](https://github.com/GaloisInc/cereal/issues/35)
-
-
