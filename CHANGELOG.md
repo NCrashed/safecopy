@@ -1,3 +1,8 @@
+0.9.6
+=====
+
+ - push upper bounds for time and template-haskell.
+
 0.9.5
 =====
 
